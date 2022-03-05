@@ -83,6 +83,8 @@ var (
 	YAML          = yamlBinding{}
 	Uri           = uriBinding{}
 	Header        = headerBinding{}
+	Request       = requestBinding{}
+	Cookie        = cookieBinding{}
 )
 
 // Default returns the appropriate Binding instance based on the HTTP method

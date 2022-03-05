@@ -601,6 +601,16 @@ func (c *Context) SaveUploadedFile(file *multipart.FileHeader, dst string) error
 	return err
 }
 
+// BindRequest binds the passed struct pointer using binding.Request.
+// It will abort the request with HTTP 400 if any error occurs.
+func (c *Context) BindRequest(obj interface{}) error {
+	if err := c.ShouldBindRequest(obj); err != nil {
+		c.AbortWithError(http.StatusBadRequest, err).SetType(ErrorTypeBind)
+		return err
+	}
+	return nil
+}
+
 // Bind checks the Method and Content-Type to select a binding engine automatically,
 // Depending on the "Content-Type" header different bindings are used, for example:
 //     "application/json" --> JSON binding
@@ -633,6 +643,11 @@ func (c *Context) BindYAML(obj interface{}) error {
 	return c.MustBindWith(obj, binding.YAML)
 }
 
+// BindCookie is a shortcut for c.MustBindWith(obj, binding.Cookie).
+func (c *Context) BindCookie(obj interface{}) error {
+	return c.MustBindWith(obj, binding.Cookie)
+}
+
 // BindHeader is a shortcut for c.MustBindWith(obj, binding.Header).
 func (c *Context) BindHeader(obj interface{}) error {
 	return c.MustBindWith(obj, binding.Header)
@@ -657,6 +672,38 @@ func (c *Context) MustBindWith(obj interface{}, b binding.Binding) error {
 		return err
 	}
 	return nil
+}
+
+// ShouldBindRequest binds the passed struct pointer using the specified binding engine.
+//   including
+//     `uri`,
+//     `query`
+//     `header` and
+//     `body data` with tag `body:""`
+//   and it's decoder is decided by header `Content-Type` value
+//   following tags must not be used in body struct, or it will be panic,
+//     uri
+//     query
+//     header
+//     cookie
+//
+// type Params struct {
+// 	Name          string `uri:"name"`
+// 	Age           int    `query:"age,default=18"`
+// 	Money         int32  `query:"money" binding:"required"`
+// 	Authorization string `cookie:"Authorization"`
+// 	UserAgent     string `header:"User-Agent"`
+// 	Data          struct {
+// 		Replicas *int32 `json:"replicas" yaml:"replicas" xml:"replicas" form:"replicas"`
+// 	} `body:"body"`
+// }
+func (c *Context) ShouldBindRequest(obj interface{}) error {
+	params := make(map[string][]string)
+	for _, v := range c.Params {
+		params[v.Key] = []string{v.Value}
+	}
+
+	return binding.Request.Bind(obj, c.Request, params)
 }
 
 // ShouldBind checks the Method and Content-Type to select a binding engine automatically,
@@ -689,6 +736,11 @@ func (c *Context) ShouldBindQuery(obj interface{}) error {
 // ShouldBindYAML is a shortcut for c.ShouldBindWith(obj, binding.YAML).
 func (c *Context) ShouldBindYAML(obj interface{}) error {
 	return c.ShouldBindWith(obj, binding.YAML)
+}
+
+// ShouldBindCookie is a shortcut for c.ShouldBindWith(obj, binding.Cookie).
+func (c *Context) ShouldBindCookie(obj interface{}) error {
+	return c.ShouldBindWith(obj, binding.Cookie)
 }
 
 // ShouldBindHeader is a shortcut for c.ShouldBindWith(obj, binding.Header).
